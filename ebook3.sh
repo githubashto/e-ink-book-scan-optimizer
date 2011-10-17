@@ -3,6 +3,9 @@
 
 # использование: скрипт документ -in_[pdf|djvu] -out_[pdf|djvu]
 
+#TMP=/media/Data/1; export TMP
+#TMPDIR=$TMP; export TMPDIR
+
 in_format=$2
 out_format=$3
 
@@ -13,10 +16,13 @@ then
    # если это DJVU то приобразовываем его в многостраничный TIFF
    ddjvu -format=tiff $1 1.tiff
    # преобразовываем TIFF в набор JPG-файлов
+   #convert -colorspace gray 1.tiff p%04d.jpg
    tiffsplit 1.tiff
+   rm 1.tiff
    mask="x*.tif"
 else
-   # если это PDF то в набор JPG-файлов
+   # если это PDF то в набор JPG-файлов с выходным DPI = 150
+   #convert -density 150 $1 p%04d.jpg
    pdftk $1 burst
    mask="pg_*.pdf"
 fi
@@ -34,7 +40,13 @@ for p in `ls -1 $mask`; do
       convert -density 300 -colorspace gray -normalize -contrast $p $p.jpg
    fi
 
+   rm $p
+
+   # назначем новое имя переменной
    p=${p}'.jpg'
+
+   # если нужно отрезать калантитул
+   #convert -gravity South -crop 100%x85% +repage $p $p
 
    # обрезаем все поля автоматически
    convert -trim +repage $p $p
@@ -47,7 +59,7 @@ for p in `ls -1 $mask`; do
    convert -gravity South -crop 100%x35% +repage $p 3_$p
 
    # удаляем страничку
-   #rm $p
+   rm $p
    
    # меняем разрешение на 800х600
    convert -scale 800x600! 1_$p 1_$p
@@ -68,9 +80,9 @@ for p in `ls -1 $mask`; do
    if [ "$out_format" = "-out_djvu" ];
    then
       # конвертируем странички в djvu-формат
-      c44 -dpi 150 1_$p.jpg 1_$p.djvu
-      c44 -dpi 150 2_$p.jpg 2_$p.djvu
-      c44 -dpi 150 3_$p.jpg 3_$p.djvu
+      c44 -dpi 150 1_$p 1_$p.djvu
+      c44 -dpi 150 2_$p 2_$p.djvu
+      c44 -dpi 150 3_$p 3_$p.djvu
 	  
       # список страничек
       pages=${pages}' 1_'${p}'.djvu 2_'${p}'.djvu 3_'${p}'.djvu'
@@ -82,6 +94,8 @@ for p in `ls -1 $mask`; do
       # список страничек
       pages=${pages}' 1_'${p}'.pdf 2_'${p}'.pdf 3_'${p}'.pdf'
     fi
+
+    rm 1_$p 2_$p 3_$p
 done
 
 # создаем выходной файл книжки
@@ -91,6 +105,11 @@ then
   djvm -c out.djvu $pages
 else
   # собрать в единый PDF
+  #convert -adjoin $pages out.pdf
   pdftk $pages cat output out.pdf
 fi
+
+rm $pages
+rm doc_data.txt
+
 
