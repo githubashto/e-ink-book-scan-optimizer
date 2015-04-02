@@ -1,0 +1,1 @@
+Optimize djvu and pdf scaned books for small display 800x600
